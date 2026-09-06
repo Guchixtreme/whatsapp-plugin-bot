@@ -46,7 +46,10 @@ async function startBot() {
     }
   });
 
-  // Listen for incoming messages across DMs, Groups, and Self-Chat
+  import { WORK_MODE, OWNER_NUMBER, PREFIX } from './config.js';
+
+// ... inside startBot() ...
+
   sock.ev.on('messages.upsert', async (m) => {
     if (m.type !== 'notify') return;
 
@@ -60,10 +63,20 @@ async function startBot() {
         msg.message.videoMessage?.caption ||
         '';
 
-      if (body.startsWith(PREFIX)) {
-        console.log(`⚡ Command received in ${msg.key.remoteJid}: ${body}`);
-        await handleCommand(sock, msg, body);
+      if (!body.startsWith(PREFIX)) continue;
+
+      const senderJid = msg.key.participant || msg.key.remoteJid;
+      const senderNumber = senderJid.split('@')[0];
+      const isOwner = msg.key.fromMe || senderNumber === OWNER_NUMBER;
+
+      // Ignore non-owner commands when in private mode
+      if (WORK_MODE === 'private' && !isOwner) {
+        console.log(`🔒 Ignored command from ${senderNumber} (Private Mode)`);
+        continue;
       }
+
+      console.log(`⚡ Command received in ${msg.key.remoteJid}: ${body}`);
+      await handleCommand(sock, msg, body);
     }
   });
 }
