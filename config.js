@@ -1,2 +1,2 @@
 export const PREFIX = '!';
-export const BOT_NAME = 'PluginBot';
+export const BOT_NAME = 'Guchi X';
