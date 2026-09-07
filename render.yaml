@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: guchi-x-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: false
+    envVars:
+      - key: BOT_NAME
+        value: Guchi X
+      - key: WORK_MODE
+        value: public
+      - key: OWNER_NUMBER
+        sync: false
