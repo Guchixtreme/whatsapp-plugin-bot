@@ -2,64 +2,53 @@ import fetch from 'node-fetch';
 
 export default {
   name: 'dl',
-  description: 'Download media from TikTok, Twitter/X, YouTube, or search Apps',
+  description: 'Universal media downloader for TikTok, Twitter, Instagram & YouTube (!dl <url>)',
   async execute({ sock, msg, args }) {
     const jid = msg.key.remoteJid;
-    const subCommand = args[0]?.toLowerCase();
-    const query = args.slice(1).join(' ');
+    const url = args[0];
 
-    if (!subCommand) {
-      const menuText = `📥 *DOWNLOAD CENTER*\n\n` +
-        `• *!dl tiktok <link>*: Download TikTok video without watermark\n` +
-        `• *!dl twitter <link>*: Download Twitter/X video\n` +
-        `• *!dl song <title/link>*: Download MP3 audio\n\n` +
-        `_Example: !dl tiktok https://vt.tiktok.com/..._`;
-
-      return sock.sendMessage(jid, { text: menuText });
+    if (!url) {
+      return sock.sendMessage(jid, { 
+        text: '❌ Please provide a media URL.\n\n*Example:* `!dl https://vm.tiktok.com/XYZ` or `!dl https://youtu.be/XYZ`' 
+      });
     }
 
-    if (!query) {
-      return sock.sendMessage(jid, { text: `⚠️ Please provide a link or search query.` });
-    }
-
-    await sock.sendMessage(jid, { text: '⏳ Processing your download request...' });
+    await sock.sendMessage(jid, { text: '⏳ Fetching media...' });
 
     try {
-      switch (subCommand) {
-        case 'tiktok': {
-          const res = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(query)}`);
-          const data = await res.json();
-          const videoUrl = data.video?.noWatermark || data.video?.watermark;
+      // 1. YouTube Downloader Flow
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const res = await fetch(`https://api.cobalt.tools/api/json`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url })
+        });
+        const data = await res.json();
 
-          if (!videoUrl) throw new Error('Could not fetch TikTok video.');
-
-          await sock.sendMessage(jid, {
-            video: { url: videoUrl },
-            caption: `🎵 *TikTok Download*\n👤 Author: ${data.author?.name || 'N/A'}`
+        if (data.url) {
+          return sock.sendMessage(jid, { 
+            video: { url: data.url }, 
+            caption: '🎥 *Guchi X YouTube Downloader*' 
           });
-          break;
         }
-
-        case 'twitter':
-        case 'x': {
-          const res = await fetch(`https://api.twitsave.com/api/download?url=${encodeURIComponent(query)}`);
-          const data = await res.json();
-          const videoUrl = data.download_url || data.media_url;
-
-          if (!videoUrl) throw new Error('Could not fetch Twitter video.');
-
-          await sock.sendMessage(jid, {
-            video: { url: videoUrl },
-            caption: `🐦 *Twitter/X Media Download*`
-          });
-          break;
-        }
-
-        default:
-          await sock.sendMessage(jid, { text: '❌ Invalid download command. Type `!dl` to see options.' });
       }
+
+      // 2. TikTok / Twitter / Instagram Universal Fallback
+      const res = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+
+      if (data.video?.noWatermark) {
+        return sock.sendMessage(jid, { 
+          video: { url: data.video.noWatermark }, 
+          caption: `🎥 *${data.title || 'Guchi X Downloader'}*` 
+        });
+      }
+
+      await sock.sendMessage(jid, { text: '❌ Could not extract video from that link. Please try another URL.' });
+
     } catch (error) {
-      await sock.sendMessage(jid, { text: `❌ Download failed: ${error.message}` });
+      console.error('Download error:', error);
+      await sock.sendMessage(jid, { text: '⚠️ Failed to process download request.' });
     }
   }
 };
