@@ -2,66 +2,52 @@ import fetch from 'node-fetch';
 
 export default {
   name: 'dl',
-  description: 'Universal downloader for TikTok, Twitter/X, YouTube & Instagram (!dl <url>)',
+  description: 'Universal media downloader (!dl <url>)',
   async execute({ sock, msg, args }) {
     const jid = msg.key.remoteJid;
     const url = args[0];
 
     if (!url) {
       return sock.sendMessage(jid, {
-        text: '❌ Please provide a media URL.\n\n*Example:* `!dl https://vm.tiktok.com/XYZ`',
+        text: '❌ Please provide a link.\n\n*Example:* `!dl https://vm.tiktok.com/XYZ`',
       });
     }
 
     await sock.sendMessage(jid, { text: '⏳ Fetching media...' });
 
     try {
-      // 1. TikTok Specialized Downloader (TikWM API)
+      // 1. TikTok Engine
       if (url.includes('tiktok.com')) {
-        const tikRes = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
-        const tikData = await tikRes.json();
+        const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
+        const json = await response.json();
 
-        if (tikData?.data?.play) {
-          const videoUrl = tikData.data.play.startsWith('http') 
-            ? tikData.data.play 
-            : `https://www.tikwm.com${tikData.data.play}`;
+        if (json?.data?.play) {
+          const videoUrl = json.data.play.startsWith('http')
+            ? json.data.play
+            : `https://www.tikwm.com${json.data.play}`;
 
           return sock.sendMessage(jid, {
             video: { url: videoUrl },
-            caption: `⚡ *TikTok Downloader*\n\n📝 ${tikData.data.title || 'Guchi X Video'}`
+            caption: `⚡ *TikTok Video*\n\n📝 ${json.data.title || 'Guchi X Video'}`
           });
         }
       }
 
-      // 2. Twitter / X / YouTube / Instagram Universal Engine (Cobalt)
-      const cobaltRes = await fetch('https://api.cobalt.tools/', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        },
-        body: JSON.stringify({
-          url: url,
-          videoQuality: '720'
-        })
-      });
+      // 2. Twitter / Instagram / YouTube Engine
+      const res = await fetch(`https://api.vkrdown.com/v2/download?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
 
-      const cobaltData = await cobaltRes.json();
-
-      if (cobaltData?.url) {
+      if (data?.data?.downloads?.[0]?.url) {
         return sock.sendMessage(jid, {
-          video: { url: cobaltData.url },
-          caption: '⚡ *Guchi X Downloader*'
+          video: { url: data.data.downloads[0].url },
+          caption: '⚡ *Guchi X Media Downloader*'
         });
       }
 
-      // If both fail, print the raw response in terminal for debugging
-      console.log('🔴 DL Error response:', { tikData: tikRes || null, cobaltData });
-      await sock.sendMessage(jid, { text: '❌ Unable to extract media from this URL. Link may be private or restricted.' });
+      await sock.sendMessage(jid, { text: '❌ Could not extract media from that link.' });
 
     } catch (error) {
-      console.error('🔴 DL Plugin Exception:', error);
+      console.error('DL Plugin Error:', error);
       await sock.sendMessage(jid, { text: '⚠️ Failed to process download request.' });
     }
   }

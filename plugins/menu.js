@@ -1,19 +1,27 @@
-import { BOT_NAME, PREFIX } from '../config.js';
-
 export default {
   name: 'menu',
-  description: 'Displays all available commands',
+  aliases: ['help'],
+  description: 'Displays all available bot commands',
   async execute({ sock, msg, plugins }) {
     const jid = msg.key.remoteJid;
 
-    let menuText = `⚡ *${BOT_NAME}* ⚡\n`;
-    menuText += `_The Modular WhatsApp Assistant_\n\n`;
-    menuText += `*Available Commands:*\n`;
+    try {
+      let menuText = `⚡ *GUCHI X BOT MENU* ⚡\n\n`;
 
-    plugins.forEach((plugin) => {
-      menuText += `• *${PREFIX}${plugin.name}*: ${plugin.description}\n`;
-    });
+      if (plugins && plugins.size > 0) {
+        for (const [name, plugin] of plugins.entries()) {
+          menuText += `▪ *!${name}* : ${plugin.description || 'No description'}\n`;
+        }
+      } else {
+        menuText += `▪ *!ping* : Check bot latency\n▪ *!menu* : Show menu\n`;
+      }
 
-    await sock.sendMessage(jid, { text: menuText });
+      menuText += `\n💡 _Type any command with the prefix ! to execute._`;
+
+      await sock.sendMessage(jid, { text: menuText }, { quoted: msg });
+    } catch (error) {
+      console.error('Menu Plugin Error:', error);
+      await sock.sendMessage(jid, { text: '⚠️ Failed to generate menu list.' }, { quoted: msg });
+    }
   }
 };
